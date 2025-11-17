@@ -5,3 +5,4 @@ opencv-python-headless
 numpy
 requests
 h5py
+flask_cors
