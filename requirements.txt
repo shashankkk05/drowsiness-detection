@@ -1,7 +1,7 @@
 Flask
 gunicorn
 tensorflow-cpu
-opencv-python
+opencv-python-headless
 numpy
 requests
 h5py
