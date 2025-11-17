@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drowsiness Detection System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 0;
+            max-width: 500px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: slideDown 0.4s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+        }
+
+        .modal-header h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .modal-body {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.05rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .helper-text {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: 8px;
+        }
+
+        .modal-footer {
+            padding: 0 40px 40px 40px;
+            text-align: center;
+        }
+
+        .btn-modal {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .btn-modal:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(56, 239, 125, 0.4);
+        }
+
+        .btn-modal:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            animation: fadeIn 0.8s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+
+        .sos-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-size: 0.95rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .video-section {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            animation: slideInLeft 0.6s ease-out;
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.3rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .status-active {
+            background: #38ef7d;
+            box-shadow: 0 0 10px #38ef7d;
+            animation: pulse 2s infinite;
+        }
+
+        .status-inactive {
+            background: #ff6a00;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        #videoFeed {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: linear-gradient(45deg, #1a1a1a 25%, #2a2a2a 25%, #2a2a2a 50%, #1a1a1a 50%, #1a1a1a 75%, #2a2a2a 75%, #2a2a2a);
+            background-size: 30px 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 1.3rem;
+            gap: 15px;
+        }
+
+        .placeholder-icon {
+            font-size: 4rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 40px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(56, 239, 125, 0.5);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(238, 9, 121, 0.5);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .stats-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            animation: slideInRight 0.6s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info-section {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            animation: fadeIn 1s ease-in;
+        }
+
+        .info-item {
+            padding: 18px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-left: 5px solid #667eea;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .info-item:hover {
+            transform: translateX(5px);
+            border-left-color: #764ba2;
+        }
+
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-item strong {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .controls {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .modal-content {
+                margin: 5% auto;
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- SOS Email Modal -->
+    <div id="sosModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🚨 Emergency Contact Setup</h2>
+                <p>Enter your SOS email address</p>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="sosEmail">📧 Emergency Contact Email</label>
+                    <input type="email" id="sosEmail" placeholder="emergency@example.com" required>
+                    <div class="helper-text">
+                        This email will receive alerts when drowsiness is detected (after 3 events)
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal" onclick="saveSosEmail()">Continue to Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Drowsiness Detection System</h1>
+            <p>Real-time driver alertness monitoring powered by AI</p>
+            <div class="sos-badge">
+                🚨 SOS Alerts: <span id="sosEmailDisplay">Not Set</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="video-section">
+                <h2 class="section-title">
+                    <span class="status-indicator status-inactive" id="statusIndicator"></span>
+                    Live Camera Feed
+                </h2>
+                <div class="video-container">
+                    <img id="videoFeed" style="display: none;">
+                    <div class="placeholder" id="placeholder">
+                        <div class="placeholder-icon">📹</div>
+                        <div>Click "Start Detection" to begin monitoring</div>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button class="btn btn-start" id="startBtn" onclick="startDetection()">
+                        ▶️ Start Detection
+                    </button>
+                    <button class="btn btn-stop" id="stopBtn" onclick="stopDetection()" disabled>
+                        ⏹️ Stop Detection
+                    </button>
+                    <button class="btn" onclick="testAlarmSound()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        🔊 Test Alarm
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <div class="stat-card">
+                    <h3>📊 Total Frames</h3>
+                    <div class="stat-value" id="totalFrames">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>👁️ Eyes Closed Count</h3>
+                    <div class="stat-value" id="eyesClosedCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>⚠️ Drowsiness Events</h3>
+                    <div class="stat-value" id="drowsinessEvents">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h2 class="section-title">ℹ️ System Information</h2>
+            <div class="info-item">
+                <strong>Status:</strong> <span id="sessionStatus">Ready to start monitoring</span>
+            </div>
+            <div class="info-item">
+                <strong>Detection Threshold:</strong> 5 consecutive frames with closed eyes triggers alarm
+            </div>
+            <div class="info-item">
+                <strong>SOS Threshold:</strong> Email sent after 3 drowsiness events
+            </div>
+            <div class="info-item">
+                <strong>How it works:</strong> AI analyzes your eyes in real-time. When drowsiness is detected, an alarm sounds and SOS email is sent after 3 events.
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>⚡ Powered by TensorFlow, Keras & OpenCV | Stay Safe, Stay Alert 🛡️</p>
+        </div>
+    </div>
+
+    <script>
+        let statsInterval;
+        const API_URL = 'http://127.0.0.1:5000';
+        let alarmAudio = null;
+        let isAlarmPlaying = false;
+        let sosEmail = '';
+
+        window.addEventListener('load', () => {
+            initAlarm();
+            checkSosEmail();
+            
+            fetch(`${API_URL}/stats`)
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Server is running!');
+                }
+            })
+            .catch(error => {
+                console.warn('⚠️ Server might not be running.');
+            });
+        });
+
+        function checkSosEmail() {
+            fetch(`${API_URL}/sos/email`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.email) {
+                    sosEmail = data.email;
+                    document.getElementById('sosEmailDisplay').textContent = sosEmail;
+                } else {
+                    document.getElementById('sosModal').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking SOS email:', error);
+                document.getElementById('sosModal').style.display = 'block';
+            });
+        }
+
+        function saveSosEmail() {
+            const email = document.getElementById('sosEmail').value;
+            
+            if (!email || !email.includes('@')) {
+                alert('❌ Please enter a valid email address');
+                return;
+            }
+
+            fetch(`${API_URL}/sos/email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email: email })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server error');
+                }
+                return response.json();
+            })
+            .then(data => {
+                sosEmail = email;
+                document.getElementById('sosEmailDisplay').textContent = email;
+                document.getElementById('sosModal').style.display = 'none';
+                console.log('✅ SOS email saved:', email);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                sosEmail = email;
+                document.getElementById('sosEmailDisplay').textContent = email;
+                document.getElementById('sosModal').style.display = 'none';
+                console.log('⚠️ Using email locally:', email);
+            });
+        }
+
+        function initAlarm() {
+            alarmAudio = new Audio('/static/alarm.mp3');
+            
+            alarmAudio.addEventListener('error', function() {
+                console.warn('⚠️ Local alarm failed, using backup');
+                alarmAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+                alarmAudio.loop = true;
+                alarmAudio.volume = 1.0;
+                alarmAudio.preload = 'auto';
+                alarmAudio.load();
+            });
+            
+            alarmAudio.loop = true;
+            alarmAudio.volume = 1.0;
+            alarmAudio.preload = 'auto';
+            alarmAudio.load();
+        }
+
+        function startDetection() {
+            if (!sosEmail) {
+                alert('⚠️ Please set your SOS email first!');
+                document.getElementById('sosModal').style.display = 'block';
+                return;
+            }
+
+            fetch(`${API_URL}/start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to start');
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('videoFeed').src = `${API_URL}/video_feed?t=${new Date().getTime()}`;
+                document.getElementById('videoFeed').style.display = 'block';
+                document.getElementById('placeholder').style.display = 'none';
+                
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('statusIndicator').className = 'status-indicator status-active';
+                document.getElementById('sessionStatus').textContent = '🟢 Detection Active';
+                
+                statsInterval = setInterval(updateStats, 1000);
+            })
+            .catch(error => {
+                alert('❌ Failed to start detection! Make sure server is running.');
+            });
+        }
+
+        function stopDetection() {
+            fetch(`${API_URL}/stop`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('videoFeed').style.display = 'none';
+                document.getElementById('videoFeed').src = '';
+                document.getElementById('placeholder').style.display = 'flex';
+                
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('statusIndicator').className = 'status-indicator status-inactive';
+                document.getElementById('sessionStatus').textContent = '🔴 Detection Stopped';
+                
+                clearInterval(statsInterval);
+                stopAlarm();
+            });
+        }
+
+        function updateStats() {
+            fetch(`${API_URL}/stats`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('totalFrames').textContent = data.total_frames.toLocaleString();
+                document.getElementById('eyesClosedCount').textContent = data.eyes_closed_count.toLocaleString();
+                document.getElementById('drowsinessEvents').textContent = data.drowsiness_events.toLocaleString();
+                
+                if (data.alarm_triggered && !isAlarmPlaying) {
+                    playAlarm();
+                } else if (!data.alarm_triggered && isAlarmPlaying) {
+                    stopAlarm();
+                }
+            });
+        }
+
+        function playAlarm() {
+            if (alarmAudio && !isAlarmPlaying) {
+                alarmAudio.currentTime = 0;
+                alarmAudio.play()
+                    .then(() => {
+                        isAlarmPlaying = true;
+                    })
+                    .catch(e => {
+                        console.error('Alarm error:', e);
+                    });
+            }
+        }
+
+        function stopAlarm() {
+            if (alarmAudio && isAlarmPlaying) {
+                alarmAudio.pause();
+                alarmAudio.currentTime = 0;
+                isAlarmPlaying = false;
+            }
+        }
+
+        function testAlarmSound() {
+            if (!alarmAudio) initAlarm();
+            
+            alarmAudio.play()
+                .then(() => {
+                    alert('✅ Alarm is working! You should hear it now.');
+                    setTimeout(() => {
+                        alarmAudio.pause();
+                        alarmAudio.currentTime = 0;
+                    }, 3000);
+                })
+                .catch(e => {
+                    console.error('❌ TEST ALARM FAILED:', e);
+                    alert('❌ Alarm test failed!\n\nError: ' + e.message);
+                });
+        }
+    </script>
+</body>
+</html>
